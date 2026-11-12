@@ -120,6 +120,19 @@
   .confoot{display:flex;justify-content:flex-start;padding-top:12px}
   @media (max-width:640px){.conlist{grid-template-columns:1fr}.consult{padding:26px 16px 4px}}
 
+  /* ---------- success stories ---------- */
+  .stories{padding:30px 24px 30px}
+  .storylist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .story{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:0}
+  .story blockquote{margin:0 0 10px;font-size:15px;line-height:1.55;color:var(--ink)}
+  .story figcaption{font-size:13px;color:var(--ink-3)}
+  .story figcaption b{color:var(--ink-2);font-weight:600}
+  .story-cta{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:14px;padding:16px 18px;border:1px dashed var(--line);border-radius:14px;color:var(--ink-2);font-size:14.5px}
+  .story-cta a.btn{text-decoration:none}
+  .story-empty{color:var(--ink-3);font-size:14px;margin:0}
+  footer .share{font-weight:600;color:var(--accent);text-underline-offset:3px}
+  @media (max-width:640px){.storylist{grid-template-columns:1fr}.stories{padding:24px 16px 8px}}
+
   /* ---------- categories ---------- */
   .cats{padding:34px 24px 26px}
   .cats-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
@@ -405,9 +418,16 @@
   <div class="more"><button class="btn" id="more" hidden>Show more jobs</button></div>
 </main>
 
+<section class="wrap stories" aria-labelledby="storyTitle" id="storySec" hidden>
+  <div class="cats-head"><h2 id="storyTitle">Success stories</h2><p>Got a job or consultancy you found on KaziRadar? Tell us how it went.</p></div>
+  <div class="storylist" id="storyList"></div>
+  <div class="story-cta" id="storyCta" hidden><span>Found work through KaziRadar, or have a suggestion for the site?</span><a class="btn" id="storyBtn" href="#" target="_blank" rel="noopener">Share your story</a></div>
+</section>
+
 <footer class="wrap">
   <p>KaziRadar lists jobs that employers publish on their own websites, and every link opens the employer's official advert or careers page. Deadlines come from the employer's advert. Where we could not check the employer's page directly, the job is marked “Confirm deadline on employer's site”.</p>
   <p>Never pay anyone to apply for a job. Genuine employers in Kenya do not charge application fees.</p>
+  <p id="footShare" hidden><a class="share" id="footShareLink" href="#" target="_blank" rel="noopener">Share your story or feedback</a></p>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -998,6 +1018,26 @@
   document.querySelectorAll("[data-look]").forEach((b) => b.addEventListener("click", () => setLook(b.dataset.look)));
   setLook(store.get("look", "night"));
 
+  /* ---------- success stories (stories.json next to the page) ---------- */
+  async function loadStories() {
+    try {
+      if (location.protocol === "file:") return;
+      const r = await fetch("stories.json?t=" + Date.now(), { cache: "no-store" });
+      if (!r.ok) return;
+      const d = await r.json();
+      const list = (d.stories || []).filter((x) => x.text);
+      const form = d.form_url || "";
+      if (!list.length && !form) return;
+      $("#storySec").hidden = false;
+      $("#storyList").innerHTML = list.length ? list.map((x) => `<figure class="story"><blockquote>“${esc(x.text)}”</blockquote><figcaption><b>${esc(x.name || "A KaziRadar user")}</b>${x.role ? " — " + esc(x.role) : ""}${x.employer ? ", " + esc(x.employer) : ""}</figcaption></figure>`).join("")
+        : `<p class="story-empty">No stories yet. Be the first to share how KaziRadar helped you.</p>`;
+      if (form) {
+        $("#storyCta").hidden = false; $("#storyBtn").href = form;
+        $("#footShare").hidden = false; $("#footShareLink").href = form;
+      }
+    } catch {}
+  }
+
   /* ---------- start ---------- */
   async function start() {
     try { const h = await api.get("/api/health"); state.live = !!(h && h.ok); } catch { state.live = false; }
@@ -1012,6 +1052,7 @@
     await loadTop();
     await loadJobs();
     renderSaved();
+    loadStories();
     setInterval(tick, 1000);
     setInterval(checkAlerts, 30000);
     setInterval(loadTop, 10 * 60000);
